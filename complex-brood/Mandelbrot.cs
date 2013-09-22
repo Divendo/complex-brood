@@ -38,19 +38,44 @@ namespace complex_brood
         {
             lock(locker)
             {
-                // Abort any old workers and create a new one
+                // Abort any old workers
                 Abort();
-                worker = new Worker(centerX - scale * pxWidth / 2 + scale / 2, centerY - scale * pxHeight / 2 + scale / 2, scale, maxIterations, pxWidth, pxHeight);
+
+                // Move the top so that the x-axis is precisely in the center of a row of pixels
+                // This makes it possible to use the symmetry of the mandelbrot set to our advantage
+                // And a translation of at most half a pixel won't be noticeable in the output
+                double top = centerY + scale * pxHeight / 2 - scale / 2;
+                top -= top - Math.Round(top / scale) * scale;
+
+                // Determine the new centerY
+                centerY = top - scale * pxHeight / 2 + scale / 2;
+
+                // Create a new worker
+                worker = new Worker(centerX - scale * pxWidth / 2 + scale / 2, top, scale, maxIterations, pxWidth, pxHeight);
                 worker.OnWorkFinished = WorkFinished;
+
+                // Determine which indexes should be calculated and which can be determined using the symmetry of the mandelbrot set
+                int startIndex = 0;
+                int endIndex = pxWidth * pxHeight;
+                if(centerY >= 0.0)
+                {
+                    // `endIndex` = `rows pixels above the x-axis including the x-axis` * `width in pixels`
+                    endIndex = (int) Math.Min(endIndex, Math.Round((top / scale + 1) * pxWidth));
+                }
+                else if(top > 0.0)
+                {
+                    // `startIndex` = `rows of pixels above the x-axis excluding the x-axis` * `width in pixels`
+                    startIndex = (int) Math.Round((top / scale) * pxWidth);
+                }
 
                 // Reset `workFinished`
                 workFinished = new bool[(int) Math.Ceiling(((double) pxWidth * pxHeight) / WORK_PER_THREAD)];
                 for(int i = 0; i < workFinished.Length; ++i)
-                    workFinished[i] = false;
+                    workFinished[i] = (i < startIndex / WORK_PER_THREAD) || (i >= (int) Math.Ceiling(((double) endIndex) / WORK_PER_THREAD));
 
-                // Queue the threads
-                for(int i = 0; i < pxWidth * pxHeight; i += WORK_PER_THREAD)
-                    ThreadPool.QueueUserWorkItem(new WaitCallback(worker.Work), new Worker.WorkerArgs(i, Math.Min(i + WORK_PER_THREAD, pxWidth * pxHeight)));
+                // Queue the work items
+                for(int i = startIndex; i < endIndex; i += WORK_PER_THREAD)
+                    ThreadPool.QueueUserWorkItem(new WaitCallback(worker.Work), new Worker.WorkerArgs(i, Math.Min(i + WORK_PER_THREAD, endIndex)));
             }
         }
 
@@ -197,7 +222,7 @@ namespace complex_brood
                 {
                     // Calculate the real (`cx`) and imaginary (`cy`) part of the current pixel
                     double cx = left + (i % pxWidth) * scale;
-                    double cy = top + (i / pxWidth) * scale;
+                    double cy = top - (i / pxWidth) * scale;
 
                     // The formula of the mandelbrot is:
                     // Z(n+1) = Z(n)^2 + C, with Z and C both complex and Z(0) = 0 and C = the current pixel
@@ -218,6 +243,20 @@ namespace complex_brood
 
                     // Store the calculated mandelnumber
                     mandelNumbers[i] = iter;
+
+                    // Check if a symmetrical mandelnumber should be stored
+                    if(cy != 0.0)
+                    {
+                        // pixelY = (top - -cy) / scale
+                        int pixelY = (int) Math.Round((top + cy) / scale);
+
+                        // Calculate te symmetrical index
+                        int symIndex = pixelY * pxWidth + i % pxWidth;
+
+                        // Check if the symmetrical index is in range, and if it is we store the symmetrical mandelnumber
+                        if(symIndex > 0 && symIndex < mandelNumbers.Length)
+                            mandelNumbers[symIndex] = iter;
+                    }
                 }
 
                 // We're done calculating, notify our master

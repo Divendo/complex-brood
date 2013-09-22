@@ -69,6 +69,16 @@ namespace complex_brood
 
             // Start the calculation
             mandelbrot.Calculate(0, 0, 4.0 / calcW, max, calcW, calcH);
+
+            /* Other interesting parameter values:
+             * centerX              centerY             scale
+             * 0                    0                   4.0 / calcW                 (the whole mandelbrot)
+             * -0.743643135         0.131825963         0.000014628 / calcW
+             * -0.74364990          0.13188204          0.00073801 / calcW
+             * -0.74364085          0.13182733          0.00012068 / calcW
+             * -0.7435669           0.1314023           0.0022878 / calcW
+             * -0.743644786         0.1318252536        0.0000029336 / calcW        (tip: increase the maximum amount of iterations to at least 3000)
+             */
         }
 
         void OnMandelbrotDoneHandler(int[] result)
