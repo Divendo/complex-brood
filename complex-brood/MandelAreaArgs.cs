@@ -8,7 +8,7 @@ using System.Drawing;
 namespace complex_brood
 {
     /// <summary>Struct that describes the area of the mandelbrot that is to be calculated or that is calculated</summary>
-    struct MandelAreaArgs
+    public struct MandelAreaArgs
     {
         /// <summary>The x-coordinate around which the area is centred</summary>
         private double centerX;
