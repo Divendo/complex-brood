@@ -33,8 +33,6 @@ namespace complex_brood
     public partial class TestWindow : Form
     {
         private const int max = 1000;
-        private int calcW = 0;
-        private int calcH = 0;
         private int lastCalcW = 0;
         private int lastCalcH = 0;
 
@@ -63,12 +61,10 @@ namespace complex_brood
 
         public void recalc()
         {
-            calcW = ClientSize.Width;
-            calcH = ClientSize.Height;
             startTicks = Environment.TickCount;
 
             // Start the calculation
-            mandelbrot.Calculate(0, 0, 4.0 / calcW, max, calcW, calcH);
+            mandelbrot.Calculate(new MandelAreaArgs(0, 0, 4.0 / ClientSize.Width, max, ClientSize.Width, ClientSize.Height));
 
             /* Other interesting parameter values:
              * centerX              centerY             scale
@@ -81,12 +77,12 @@ namespace complex_brood
              */
         }
 
-        void OnMandelbrotDoneHandler(int[] result)
+        void OnMandelbrotDoneHandler(MandelAreaArgs args, int[] result)
         {
             deltaTicks = Environment.TickCount - startTicks;
             mandelNumbers = result;
-            lastCalcW = calcW;
-            lastCalcH = calcH;
+            lastCalcW = args.PxWidth;
+            lastCalcH = args.PxHeight;
             Invalidate();
         }
 

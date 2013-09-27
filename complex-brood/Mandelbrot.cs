@@ -23,59 +23,52 @@ namespace complex_brood
         /// <summary>Worker threads results reporting synchronizes on this object</summary>
         private Object locker = new Object();
 
-        /// <summary>An array of booleans indicating for which ranges the work has finished.
-        /// The booleans are stored as follows: workFinished[range.Begin / WORK_PER_THREAD] = true (finished) or false (unfinished)</summary>
-        private bool[] workFinished;
+        /// <summary>A dictionary of booleans indicating for which ranges the work has finished.
+        /// The booleans are stored as follows: workFinished[range.Begin] = true (finished) or false (unfinished)</summary>
+        private Dictionary<int, bool> workFinished;
 
         /// <summary>Starts calculating the mandelnumbers for the given area of the mandelbrot set.</summary>
-        /// <param name="centerX">The x-coordinate around which the area that is to be calculated is centred</param>
-        /// <param name="centerY">The y-coordinate around which the area that is to be calculated is centred</param>
-        /// <param name="scale">The scale of each pixel</param>
-        /// <param name="maxIterations">The maximum amount of iterations before a point is considered to be part of the mandelbrot set</param>
-        /// <param name="pxWidth">The amount of horizontal pixels</param>
-        /// <param name="pxHeight">The amount of vertical pixels</param>
-        public void Calculate(double centerX, double centerY, double scale, int maxIterations, int pxWidth, int pxHeight)
+        /// <param name="args">The area to calculate</param>
+        public void Calculate(MandelAreaArgs args)
         {
             lock(locker)
             {
                 // Abort any old workers
                 Abort();
 
-                // Move the top so that the x-axis is precisely in the center of a row of pixels
+                // Translate centerY so that the x-axis is precisely in the center of a row of pixels
                 // This makes it possible to use the symmetry of the mandelbrot set to our advantage
-                // And a translation of at most half a pixel won't be noticeable in the output
-                double top = centerY + scale * pxHeight / 2 - scale / 2;
-                top -= top - Math.Round(top / scale) * scale;
-
-                // Determine the new centerY
-                centerY = top - scale * pxHeight / 2 + scale / 2;
+                // And a translation of at most half a pixel won't be noticeable for the user in the output
+                args.CenterY -= args.CalcAreaTop() - Math.Round(args.CalcAreaTop() / args.Scale) * args.Scale;
 
                 // Create a new worker
-                worker = new Worker(centerX - scale * pxWidth / 2 + scale / 2, top, scale, maxIterations, pxWidth, pxHeight);
+                worker = new Worker(args);
                 worker.OnWorkFinished = WorkFinished;
 
                 // Determine which indexes should be calculated and which can be determined using the symmetry of the mandelbrot set
                 int startIndex = 0;
-                int endIndex = pxWidth * pxHeight;
-                if(centerY >= 0.0)
+                int endIndex = args.CalcArea.Width * args.CalcArea.Height;
+                if(args.CalcAreaTop() > 0.0 && args.CalcAreaBottom() < 0.0)
                 {
-                    // `endIndex` = `rows pixels above the x-axis including the x-axis` * `width in pixels`
-                    endIndex = (int) Math.Min(endIndex, Math.Round((top / scale + 1) * pxWidth));
+                    if(args.CalcAreaTop() >= -args.CalcAreaBottom())
+                    {
+                        // `endIndex` = `rows of pixels above the x-axis including the x-axis` * `width in pixels`
+                        endIndex = (int) Math.Min(endIndex, Math.Round((args.CalcAreaTop() / args.Scale + 1) * args.CalcArea.Width));
+                    }
+                    else
+                    {
+                        // `startIndex` = `rows of pixels above the x-axis excluding the x-axis` * `width in pixels`
+                        startIndex = (int) Math.Round((args.CalcAreaTop() / args.Scale) * args.CalcArea.Width);
+                    }
                 }
-                else if(top > 0.0)
-                {
-                    // `startIndex` = `rows of pixels above the x-axis excluding the x-axis` * `width in pixels`
-                    startIndex = (int) Math.Round((top / scale) * pxWidth);
-                }
-
-                // Reset `workFinished`
-                workFinished = new bool[(int) Math.Ceiling(((double) pxWidth * pxHeight) / WORK_PER_THREAD)];
-                for(int i = 0; i < workFinished.Length; ++i)
-                    workFinished[i] = (i < startIndex / WORK_PER_THREAD) || (i >= (int) Math.Ceiling(((double) endIndex) / WORK_PER_THREAD));
 
                 // Queue the work items
+                workFinished = new Dictionary<int, bool>((int) Math.Ceiling(((double) endIndex - startIndex) / WORK_PER_THREAD));
                 for(int i = startIndex; i < endIndex; i += WORK_PER_THREAD)
+                {
+                    workFinished[i] = false;
                     ThreadPool.QueueUserWorkItem(new WaitCallback(worker.Work), new Worker.WorkerArgs(i, Math.Min(i + WORK_PER_THREAD, endIndex)));
+                }
             }
         }
 
@@ -94,8 +87,9 @@ namespace complex_brood
         }
 
         /// <summary>The type of the method that is to be called when the mandelnumbers have been calculated</summary>
+        /// <param name="args">The area for which the calculation was done</param>
         /// <param name="mandelNumbers">An array containing the mandelnumbers, stored as follows: mandelNumbers[x + y * width] = mandelnumber for (x, y)</param>
-        public delegate void OnCalculationDoneHandler(int[] mandelNumbers);
+        public delegate void OnCalculationDoneHandler(MandelAreaArgs args, int[] mandelNumbers);
         /// <summary>The handler that is to be called when the calculation is done</summary>
         private OnCalculationDoneHandler onCalculationDoneHandler;
         /// <summary>Property to set or get the current OnCalculationDoneHandler</summary>
@@ -105,11 +99,12 @@ namespace complex_brood
             set { onCalculationDoneHandler = value; }
         }
         /// <summary>Calls the OnCalculationDoneHandler</summary>
+        /// <param name="args">The area for which the calculation was done that is to be passed to the OnCalculationDoneHandler</param>
         /// <param name="mandelNumbers">The array of mandelnumbers that is to passed to the OnCalculationDoneHandler</param>
-        private void CallOnCalculationDone(int[] mandelNumbers)
+        private void CallOnCalculationDone(MandelAreaArgs args, int[] mandelNumbers)
         {
             if(onCalculationDoneHandler != null)
-                BeginInvoke(onCalculationDoneHandler, new object[] { mandelNumbers });
+                BeginInvoke(onCalculationDoneHandler, new object[] { args, mandelNumbers });
         }
 
         /// <summary>Called when Worker.Work() finishes its work on a thread</summary>
@@ -123,11 +118,11 @@ namespace complex_brood
                 if(w.Aborted) return;
 
                 // Mark the work as done
-                workFinished[args.Begin / WORK_PER_THREAD] = true;
+                workFinished[args.Begin] = true;
 
                 // Check if all work is done
                 bool allWorkFinished = true;
-                foreach(bool finished in workFinished)
+                foreach(bool finished in workFinished.Values)
                 {
                     if(!finished)
                     {
@@ -139,7 +134,7 @@ namespace complex_brood
                 // If all work is done, report so to the main thread
                 if(allWorkFinished)
                 {
-                    CallOnCalculationDone(w.MandelNumbers);
+                    CallOnCalculationDone(w.Args, w.MandelNumbers);
                     worker = null;
                 }
             }
@@ -148,21 +143,6 @@ namespace complex_brood
         /// <summary>This class does the actual calculating of the mandelnumbers</summary>
         private class Worker
         {
-            /// <summary>The array in which the results are stored, the results are stored as follows: mandelNumbers[x + y * width] = mandelnumber for (x, y)</summary>
-            private int[] mandelNumbers;
-            /// <summary>The leftmost x-coordinate (in mandelbrot coordinates) of the area that is to be calculated</summary>
-            private double left;
-            /// <summary>The topmost y-coordinate (in mandelbrot coordinates) of the area that is to be calculated</summary>
-            private double top;
-            /// <summary>The scale of each pixel</summary>
-            private double scale;
-            /// <summary>The maximum amount of iterations before a point is considered to be part of the mandelbrot set</summary>
-            private int maxIterations;
-            /// <summary>The width of the area in pixels</summary>
-            private int pxWidth;
-            /// <summary>Whether or not we're aborted</summary>
-            private bool aborted = false;
-
             /// <summary>Describes the half-open range [begin, end) of indexes in the mandelNumbers array that should be calculated by the Work() method</summary>
             public struct WorkerArgs
             {
@@ -183,32 +163,34 @@ namespace complex_brood
                 public int End { get { return end; } }
             }
 
+            /// <summary>The array in which the results are stored, the results are stored as follows: mandelNumbers[x + y * width] = mandelnumber for (x, y).
+            /// Note that here x, y are in pixel coordinates where x and y are relative to the top-left coordinates of `mandelAreaArgs.CalcArea`.
+            /// Furthermore, width here is the same as `mandelAreaArgs.CalcArea.Width`</summary>
+            private int[] mandelNumbers;
+            /// <summary>The area that is to be calculated</summary>
+            private MandelAreaArgs mandelAreaArgs;
+            /// <summary>Whether or not we're aborted</summary>
+            private bool aborted = false;
+
             /// <summary>Constructs a Worker to calculate the mandelnumbers for a certain area</summary>
-            /// <param name="x">The leftmost x-coordinate (in mandelbrot coordinates) of the area that is to be calculated</param>
-            /// <param name="y">The topmost y-coordinate (in mandelbrot coordinates) of the area that is to be calculated</param>
-            /// <param name="s">The scale of each pixel</param>
-            /// <param name="maxIter">The maximum amount of iterations before a point is considered to be part of the mandelbrot set</param>
-            /// <param name="w">The width in pixels</param>
-            /// <param name="h">The height in pixels</param>
-            public Worker(double x, double y, double s, int maxIter, int w, int h)
+            /// <param name="args">The area that is to be calculated</param>
+            public Worker(MandelAreaArgs args)
             {
-                mandelNumbers = new int[w * h];
-                left = x;
-                top = y;
-                scale = s;
-                maxIterations = maxIter;
-                pxWidth = w;
+                mandelNumbers = new int[args.CalcArea.Width * args.CalcArea.Height];
+                mandelAreaArgs = args;
             }
 
             /// <summary>Get the calculated mandel numbers</summary>
             public int[] MandelNumbers { get { return mandelNumbers; } }
 
             /// <summary>Aborts all work for this Worker</summary>
-            public void Abort()
-            { aborted = true; }
+            public void Abort() { aborted = true; }
 
             /// <summary>Returns whether the work in this Worker has been aborted or not</summary>
             public bool Aborted { get { return aborted; } }
+
+            /// <summary>Returns the MandelAreaArgs that was given to this Worker to calculate</summary>
+            public MandelAreaArgs Args { get { return mandelAreaArgs; } }
 
             /// <summary>Calculates a part of the mandelNumbers array</summary>
             /// <param name="args">A WorkerArgs instance describing which part of the mandelNumbers array should be calculated</param>
@@ -217,12 +199,16 @@ namespace complex_brood
                 // Convert `args` to a WorkerArgs that we can use
                 WorkerArgs workerArgs = (WorkerArgs) args;
 
+                // Calculate the left and top coordinates in mandelbrot coordinates
+                double left = mandelAreaArgs.CalcAreaLeft();
+                double top = mandelAreaArgs.CalcAreaTop();
+
                 // Go through all indexes that should be calculated
                 for(int i = workerArgs.Begin; !aborted && i < workerArgs.End; ++i)
                 {
                     // Calculate the real (`cx`) and imaginary (`cy`) part of the current pixel
-                    double cx = left + (i % pxWidth) * scale;
-                    double cy = top - (i / pxWidth) * scale;
+                    double cx = left + (i % mandelAreaArgs.CalcArea.Width) * mandelAreaArgs.Scale;
+                    double cy = top - (i / mandelAreaArgs.CalcArea.Width) * mandelAreaArgs.Scale;
 
                     // The formula of the mandelbrot is:
                     // Z(n+1) = Z(n)^2 + C, with Z and C both complex and Z(0) = 0 and C = the current pixel
@@ -233,7 +219,7 @@ namespace complex_brood
 
                     // Calculate the mandelnumber for the current C
                     double zxTemp = 0.0;
-                    while(!aborted && zx * zx + zy * zy <= 4 && iter < maxIterations)
+                    while(!aborted && zx * zx + zy * zy <= 4 && iter < mandelAreaArgs.MaxIterations)
                     {
                         zxTemp = zx;
                         zx = zx * zx - zy * zy + cx;
@@ -248,10 +234,10 @@ namespace complex_brood
                     if(cy != 0.0)
                     {
                         // pixelY = (top - -cy) / scale
-                        int pixelY = (int) Math.Round((top + cy) / scale);
+                        int pixelY = (int) Math.Round((top + cy) / mandelAreaArgs.Scale);
 
                         // Calculate te symmetrical index
-                        int symIndex = pixelY * pxWidth + i % pxWidth;
+                        int symIndex = pixelY * mandelAreaArgs.CalcArea.Width + i % mandelAreaArgs.CalcArea.Width;
 
                         // Check if the symmetrical index is in range, and if it is we store the symmetrical mandelnumber
                         if(symIndex > 0 && symIndex < mandelNumbers.Length)

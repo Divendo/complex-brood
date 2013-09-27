@@ -36,7 +36,7 @@ namespace complex_brood
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new TestWindow());
+            Application.Run(new MainWindow());
         }
     }
 }

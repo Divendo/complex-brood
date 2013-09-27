@@ -44,6 +44,19 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="MandelAreaArgs.cs" />
+    <Compile Include="MainWindow.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="MainWindow.Designer.cs">
+      <DependentUpon>MainWindow.cs</DependentUpon>
+    </Compile>
+    <Compile Include="MandelDisplay.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="MandelDisplay.Designer.cs">
+      <DependentUpon>MandelDisplay.cs</DependentUpon>
+    </Compile>
     <Compile Include="TestWindow.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -55,6 +68,12 @@
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <EmbeddedResource Include="MainWindow.resx">
+      <DependentUpon>MainWindow.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="MandelDisplay.resx">
+      <DependentUpon>MandelDisplay.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="TestWindow.resx">
       <DependentUpon>TestWindow.cs</DependentUpon>
     </EmbeddedResource>
