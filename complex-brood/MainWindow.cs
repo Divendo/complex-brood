@@ -16,11 +16,12 @@ namespace complex_brood
         {
             // Initialize the layout
             InitializeComponent();
-
-            // Make sure the the diameter spinner has the right value
-            spinnerDiameter.Value = spinnerScale.Value * mandelDisplay.Width;
+            spinnerScale.Value = spinnerDiameter.Value / mandelDisplay.Width;
+            comboColorPalette.SelectedIndex = 0;
+            comboLocations.SelectedIndex = 0;
 
             // Initial calculation for `mandelDisplay`
+            mandelDisplay.SetMandelNumberToColorFunc(MandelNumberConverters.BlackWhite);
             recalcMandel();
         }
 
@@ -55,20 +56,25 @@ namespace complex_brood
         // ResizeEnd handler
         private void MainWindow_ResizeEnd(object sender, EventArgs e)
         {
-            // Keep the same diameter
-            spinnerScale.Value = spinnerDiameter.Value / mandelDisplay.Width;
-            recalcMandel();
+            // Check if the scale would change (if it wouldn't, there is no reason to recalculate the mandelbrot image)
+            if(spinnerScale.Value != spinnerDiameter.Value / mandelDisplay.Width)
+            {
+                // Keep the same diameter
+                spinnerScale.Value = spinnerDiameter.Value / mandelDisplay.Width;
+                recalcMandel();
+            }
         }
 
         // Resize handler
         private void MainWindow_Resize(object sender, EventArgs e)
         {
-            // Keep the same diameter
-            spinnerScale.Value = spinnerDiameter.Value / mandelDisplay.Width;
-
             // If our state changes, we need to recalculate (the ResizeEnd event will not fire then)
             if(lastRecalcState != WindowState && WindowState != FormWindowState.Minimized)
+            {
+                // Keep the same diameter
+                spinnerScale.Value = spinnerDiameter.Value / mandelDisplay.Width;
                 recalcMandel();
+            }
         }
 
         // MouseClick handler for `mandelDisplay`
@@ -155,6 +161,52 @@ namespace complex_brood
             lastDragX = -1;
             lastDragY = -1;
             dragged = false;
+        }
+
+        // SelectedIndexChanged handler for `comboColorPalette`
+        private void comboColorPalette_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            switch(comboColorPalette.SelectedIndex)
+            {
+                case 0:
+                    mandelDisplay.SetMandelNumberToColorFunc(MandelNumberConverters.BlackWhite);
+                break;
+                case 1:
+                    mandelDisplay.SetMandelNumberToColorFunc(MandelNumberConverters.EvenOdd);
+                break;
+                case 2:
+                    mandelDisplay.SetMandelNumberToColorFunc(MandelNumberConverters.RedBlue);
+                break;
+                case 3:
+                    mandelDisplay.SetMandelNumberToColorFunc(MandelNumberConverters.WaveLength);
+                break;
+                case 4:
+                    mandelDisplay.SetMandelNumberToColorFunc(MandelNumberConverters.ThreeChannels);
+                break;
+                case 5:
+                    mandelDisplay.SetMandelNumberToColorFunc(MandelNumberConverters.ColorWheel);
+                break;
+            }
+        }
+
+        // SelectedIndexChanged handler for `comboLocations`
+        private void comboLocations_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            // The location data, sorted the same way as the combobox
+            double[][] locationData = new double[][] {
+                /*            Center X      Center Y        Hor. diameter   */
+                new double[] {0,            0,              4.0},
+                new double[] {-0.743643135, 0.131825963,    0.000014628},
+                new double[] {-0.74364990,  0.13188204,     0.00073801},
+                new double[] {-0.74364085,  0.13182733,     0.00012068},
+                new double[] {-0.7435669,   0.1314023,      0.0022878},
+                new double[] {-0.743644786, 0.1318252536,   0.0000029336},
+                new double[] {-0.732532474, 0.216417977,    0.003984000} };
+
+            // Set the new values to the spinners
+            spinnerCenterX.Value = new Decimal(locationData[comboLocations.SelectedIndex][0]);
+            spinnerCenterY.Value = new Decimal(locationData[comboLocations.SelectedIndex][1]);
+            spinnerDiameter.Value = new Decimal(locationData[comboLocations.SelectedIndex][2]);
         }
     }
 }

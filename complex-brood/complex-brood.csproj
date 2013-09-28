@@ -57,6 +57,7 @@
     <Compile Include="MandelDisplay.Designer.cs">
       <DependentUpon>MandelDisplay.cs</DependentUpon>
     </Compile>
+    <Compile Include="MandelNumberConverters.cs" />
     <Compile Include="TestWindow.cs">
       <SubType>Form</SubType>
     </Compile>
