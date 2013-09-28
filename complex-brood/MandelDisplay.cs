@@ -42,7 +42,13 @@ namespace complex_brood
         private bool calculating;
 
         /// <summary>The current function for converting mandelnumbers to colors</summary>
-        MandelNumberToColor mandelNumberToColor;
+        private MandelNumberToColor mandelNumberToColor;
+
+        /// <summary>An array of colors, each for the corresponding mandelnumber</summary>
+        private Color[] colorMap;
+
+        /// <summary>Whether or not we expect the outcome of the next calculation to be the whole area</summary>
+        private bool expectWholeArea;
 
         public MandelDisplay()
         {
@@ -50,6 +56,8 @@ namespace complex_brood
             InitializeComponent();
 
             // Initialiaze some fields
+            currArea = new MandelAreaArgs();
+            calcedArea = new MandelAreaArgs();
             mandelNumbers = null;
             img = null;
             calculating = false;
@@ -67,12 +75,14 @@ namespace complex_brood
             this.ResizeRedraw = true;
         }
 
-        /// <summary>Sets the area of the mandelbrot that is to be shown</summary>
+        /// <summary>Sets the area of the mandelbrot that is to be shown (note that the CalcArea property is ignored)</summary>
         /// <param name="mea">The area of the mandelbrot that is to be shown</param>
         public void SetArea(MandelAreaArgs mea)
         {
             currArea = mea;
+            currArea.CalcArea = new Rectangle(0, 0, currArea.PxWidth, currArea.PxHeight);
             currArea.CenterOnXAxis();
+            currArea.CenterOnYAxis();
             Invalidate();
         }
 
@@ -80,29 +90,177 @@ namespace complex_brood
         public void Recalc()
         {
             // Start the new calculation
-            mandelbrot.Calculate(currArea);
-            calculating = true;
+            if(mandelNumbers != null && currArea.Scale == calcedArea.Scale && currArea.MaxIterations == calcedArea.MaxIterations)
+            {
+                if(currArea.CenterX == calcedArea.CenterX && currArea.CenterY == calcedArea.CenterY && currArea.PxWidth == calcedArea.PxWidth && currArea.PxHeight == calcedArea.PxHeight)
+                    renderBitmap();
+                else
+                {
+                    // Calculate the translation
+                    int transX = (int) Math.Round((calcedArea.CenterX - currArea.CenterX) / calcedArea.Scale);
+                    int transY = (int) Math.Round((currArea.CenterY - calcedArea.CenterY) / calcedArea.Scale);
+
+                    // Check if the already calculated area and the area that is to be calculated overlap
+                    if(calcedArea.CalcArea.X + transX < currArea.PxWidth && calcedArea.CalcArea.Y + transY < currArea.PxHeight &&
+                       calcedArea.CalcArea.X + transX + calcedArea.CalcArea.Width > 0 && calcedArea.CalcArea.Y + transY + calcedArea.CalcArea.Height > 0)
+                    {
+                        // Calculate the overlapping area (in the pixel coordinates of currArea)
+                        Rectangle overlap = new Rectangle(calcedArea.CalcArea.X + transX, calcedArea.CalcArea.Y + transY, calcedArea.CalcArea.Width, calcedArea.CalcArea.Height);
+                        overlap.Intersect(new Rectangle(0, 0, currArea.PxWidth, currArea.PxHeight));
+
+                        // Create a new array of mandelnumbers
+                        int[] tmpMandelNumbers = new int[overlap.Width * overlap.Height];
+                        for(int x = 0; x < overlap.Width; ++x)
+                            for(int y = 0; y < overlap.Height; ++y)
+                                tmpMandelNumbers[x + y * overlap.Width] = mandelNumbers[x + overlap.X - transX + (y + overlap.Y - transY) * calcedArea.CalcArea.Width];
+
+                        // Set the calcedArea and mandelNumber to the new values overlapping values
+                        calcedArea = currArea;
+                        calcedArea.CalcArea = overlap;
+                        mandelNumbers = tmpMandelNumbers;
+
+                        // Start filling the gaps
+                        calcPart();
+
+                        // Create a new bitmap of the right size and copy the old one to it
+                        Bitmap newImg = new Bitmap(calcedArea.PxWidth, calcedArea.PxHeight);
+                        Graphics.FromImage(newImg).FillRectangle(Brushes.White, 0, 0, calcedArea.PxWidth, calcedArea.PxHeight);
+                        Graphics.FromImage(newImg).DrawImage(img, transX, transY);
+                        img = newImg;
+                    }
+                    else
+                    {
+                        // Just start a regular calculation if they don't overlap
+                        expectWholeArea = true;
+                        mandelbrot.Calculate(currArea);
+                        calculating = true;
+                    }
+                }
+            }
+            else
+            {
+                expectWholeArea = true;
+                mandelbrot.Calculate(currArea);
+                calculating = true;
+            }
 
             // Redraw the screen
             Invalidate();
         }
 
+        /// <summary>Calculates a part that hasn't been calculated yet according to `calcedArea`</summary>
+        /// <returns>True if a new calculation is started, otherwise false</returns>
+        private bool calcPart()
+        {
+            // First fill the bands on top or below the calculated area
+            // That leaves bigger vertical bands, which can use the symmetry of the mandelbrot to boost their speed
+            if(calcedArea.CalcArea.Y > 0)
+            {
+                MandelAreaArgs area = calcedArea;
+                area.CalcArea = new Rectangle(calcedArea.CalcArea.X, 0, calcedArea.CalcArea.Width, calcedArea.CalcArea.Y);
+                expectWholeArea = false;
+                mandelbrot.Calculate(area);
+                calculating = true;
+            }
+            else if(calcedArea.CalcArea.Height < calcedArea.PxHeight)
+            {
+                MandelAreaArgs area = calcedArea;
+                area.CalcArea = new Rectangle(calcedArea.CalcArea.X, calcedArea.CalcArea.Bottom, calcedArea.CalcArea.Width, calcedArea.PxHeight - calcedArea.CalcArea.Bottom);
+                expectWholeArea = false;
+                mandelbrot.Calculate(area);
+                calculating = true;
+            }
+            else if(calcedArea.CalcArea.X > 0)
+            {
+                MandelAreaArgs area = calcedArea;
+                area.CalcArea = new Rectangle(0, 0, calcedArea.CalcArea.X, calcedArea.PxHeight);
+                expectWholeArea = false;
+                mandelbrot.Calculate(area);
+                calculating = true;
+            }
+            else if(calcedArea.CalcArea.Width < calcedArea.PxWidth)
+            {
+                MandelAreaArgs area = calcedArea;
+                area.CalcArea = new Rectangle(calcedArea.CalcArea.Right, 0, calcedArea.PxWidth - calcedArea.CalcArea.Right, calcedArea.PxHeight);
+                expectWholeArea = false;
+                mandelbrot.Calculate(area);
+                calculating = true;
+            }
+            else
+                calculating = false;
+
+            // Redraw the screen
+            Invalidate();
+
+            // Return whether we've started a new calculation
+            return calculating;
+        }
+
         public void SetMandelNumberToColorFunc(MandelNumberToColor f)
-        { mandelNumberToColor = f; }
-            
-            
+        {
+            // Remember the function
+            mandelNumberToColor = f;
+
+            // Calculate the color map
+            colorMap = new Color[calcedArea.MaxIterations + 1];
+            for(int i = 0; i <= calcedArea.MaxIterations; ++i)
+                colorMap[i] = mandelNumberToColor(i, calcedArea.MaxIterations);
+        }
+
+
         /// <summary>Handler for when `mandelbrot` is done calculating</summary>
         private void onMandelbrotDoneHandler(MandelAreaArgs args, int[] result)
         {
-            // Remember the area for which the calculation has been done
-            calcedArea = args;
-            mandelNumbers = result;
+            if(expectWholeArea)
+            {
+                // Remember the area for which the calculation has been done
+                calcedArea = args;
+                mandelNumbers = result;
 
-            // We're done calculating
-            calculating = false;
+                // Recalculate the color map if the maximum amount of iterations has changed
+                if(colorMap.Length != calcedArea.MaxIterations + 1)
+                {
+                    colorMap = new Color[calcedArea.MaxIterations + 1];
+                    for(int i = 0; i <= calcedArea.MaxIterations; ++i)
+                        colorMap[i] = mandelNumberToColor(i, calcedArea.MaxIterations);
+                }
 
-            // Render the bitmap
-            renderBitmap();
+                // We're done calculating
+                calculating = false;
+
+                // Render the bitmap
+                renderBitmap();
+            }
+            else
+            {
+                // Calculate the new calcedArea.CalcArea
+                Rectangle newCalcArea = new Rectangle(Math.Min(calcedArea.CalcArea.X, args.CalcArea.X),
+                                                     Math.Min(calcedArea.CalcArea.Y, args.CalcArea.Y),
+                                                     1, 1);
+                newCalcArea.Width = Math.Max(calcedArea.CalcArea.Right, args.CalcArea.Right) - newCalcArea.X;
+                newCalcArea.Height = Math.Max(calcedArea.CalcArea.Bottom, args.CalcArea.Bottom) - newCalcArea.Y;
+
+                // Copy the new mandelnumbers together with the current mandelnumbers to a new array
+                int[] tmpMandelNumbers = new int[newCalcArea.Width * newCalcArea.Height];
+                for(int x = 0; x < newCalcArea.Width; ++x)
+                {
+                    for(int y = 0; y < newCalcArea.Height; ++y)
+                    {
+                        if(args.CalcArea.Contains(newCalcArea.X + x, newCalcArea.Y + y))
+                            tmpMandelNumbers[x + y * newCalcArea.Width] = result[newCalcArea.X + x - args.CalcArea.X + (newCalcArea.Y + y - args.CalcArea.Y) * args.CalcArea.Width];
+                        else
+                            tmpMandelNumbers[x + y * newCalcArea.Width] = mandelNumbers[newCalcArea.X + x - calcedArea.CalcArea.X + (newCalcArea.Y + y - calcedArea.CalcArea.Y) * calcedArea.CalcArea.Width];
+                    }
+                }
+
+                // Store the new result
+                mandelNumbers = tmpMandelNumbers;
+                calcedArea.CalcArea = newCalcArea;
+
+                // Fill the next gap, or render the bitmap (if we've filled all gaps)
+                if(!calcPart())
+                    renderBitmap();
+            }
         }
 
         /// <summary>Renders a bitmap from the currently calculated data and stores it in `img`</summary>
@@ -118,16 +276,16 @@ namespace complex_brood
 
             // If necessary: create a new bitmap
             if(img == null || img.Width != calcedArea.PxWidth || img.Height != calcedArea.PxHeight)
-            {
                 img = new Bitmap(calcedArea.PxWidth, calcedArea.PxHeight);
-                Graphics.FromImage(img).FillRectangle(Brushes.White, 0, 0, calcedArea.PxWidth, calcedArea.PxHeight);
-            }
+
+            // Clear the bitmap
+            Graphics.FromImage(img).FillRectangle(Brushes.White, 0, 0, calcedArea.PxWidth, calcedArea.PxHeight);
 
             // Draw the calculated pixels on the bitmap
             for(int x = 0; x < calcedArea.CalcArea.Width; ++x)
                 for(int y = 0; y < calcedArea.CalcArea.Height; ++y)
-                    img.SetPixel(calcedArea.CalcArea.X + x, calcedArea.CalcArea.Y + y, mandelNumberToColor(mandelNumbers[x + y * calcedArea.CalcArea.Width], calcedArea.MaxIterations));
-
+                    img.SetPixel(calcedArea.CalcArea.X + x, calcedArea.CalcArea.Y + y, colorMap[mandelNumbers[x + y * calcedArea.CalcArea.Width]]);
+            
             // Redraw the screen
             Invalidate();
         }
@@ -150,19 +308,6 @@ namespace complex_brood
             // Draw the image, if we have one (scale it to fit)
             if(img != null)
             {
-               /* GraphicsState state = pea.Graphics.Save();
-                pea.Graphics.TranslateTransform((float) ((calcedArea.CenterX - currArea.CenterX) / calcedArea.Scale), (float) ((currArea.CenterY - calcedArea.CenterY) / calcedArea.Scale));
-                float scaleFactor = (float) (calcedArea.Scale / currArea.Scale);
-                pea.Graphics.ScaleTransform(scaleFactor, scaleFactor);
-
-                /*double factor = Width / ((double) img.Width);
-                int w = (int) Math.Round(factor * img.Width);
-                int h = (int) Math.Round(factor * img.Height);
-                pea.Graphics.DrawImage(img, (Width - w) / 2, (Height - h) / 2, w, h);*/
-                //pea.Graphics.DrawImage(img, 0, 0);
-                //pea.Graphics.DrawImage(img, new Rectangle(0, 0, Width, Height), new Rectangle(-50, -50, img.Width + 100, img.Height + 100), GraphicsUnit.Pixel);
-
-                //pea.Graphics.Restore(state);
                 RectangleF src = new RectangleF((float) ((currArea.Left() - calcedArea.Left()) / calcedArea.Scale),
                                                 (float) ((calcedArea.Top() - currArea.Top()) / calcedArea.Scale),
                                                 (float) (currArea.PxWidth * currArea.Scale / calcedArea.Scale),

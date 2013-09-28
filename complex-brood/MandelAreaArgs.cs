@@ -103,6 +103,10 @@ namespace complex_brood
         public double CalcAreaBottom()
         { return centerY - scale * pxHeight / 2 + scale / 2 + (pxHeight - calcArea.Bottom) * scale; }
 
+        /// <summary>Translate centerX so that the y-axis is precisely in the center of a column of pixels</summary>
+        public void CenterOnYAxis()
+        { centerX -= CalcAreaLeft() - Math.Round(CalcAreaLeft() / scale) * scale; }
+
         /// <summary>Translate centerY so that the x-axis is precisely in the center of a row of pixels
         /// This makes it possible to use the symmetry of the mandelbrot set to our advantage
         /// And a translation of at most half a pixel won't be noticeable for the user in the output</summary>
