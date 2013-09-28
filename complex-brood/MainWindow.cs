@@ -32,64 +32,67 @@ namespace complex_brood
         private void recalcMandel()
         {
             lastRecalcState = WindowState;
-
-            mandelDisplay.SetArea(new MandelAreaArgs(Decimal.ToDouble(spinnerCenterX.Value),
-                                        Decimal.ToDouble(spinnerCenterY.Value),
-                                        Decimal.ToDouble(spinnerScale.Value),
-                                        Decimal.ToInt32(spinnerMaxIterations.Value),
-                                        mandelDisplay.Width, mandelDisplay.Height));
+            mandelDisplay.SetArea(areaFromSpinners());
             mandelDisplay.Recalc();
+        }
+
+        /// <summary>Creates a MandelAreaArgs object from the current spinner values</summary>
+        /// <returns>The created MandelAreaArgs</returns>
+        private MandelAreaArgs areaFromSpinners()
+        {
+            return new MandelAreaArgs(Decimal.ToDouble(spinnerCenterX.Value),
+                            Decimal.ToDouble(spinnerCenterY.Value),
+                            Decimal.ToDouble(spinnerScale.Value),
+                            Decimal.ToInt32(spinnerMaxIterations.Value),
+                            mandelDisplay.Width, mandelDisplay.Height);
         }
 
         // Click handler for `btnGo`
         private void btnGo_Click(object sender, EventArgs e)
         { recalcMandel(); }
 
+        // ValueChanged handler for `spinnerCenterX`
+        private void spinnerCenterX_ValueChanged(object sender, EventArgs e)
+        { mandelDisplay.SetArea(areaFromSpinners()); }
+
+        // ValueChanged handler for `spinnerCenterY`
+        private void spinnerCenterY_ValueChanged(object sender, EventArgs e)
+        { mandelDisplay.SetArea(areaFromSpinners()); }
+
         // ValueChanged handler for `spinnerScale`
         private void spinnerScale_ValueChanged(object sender, EventArgs e)
-        { spinnerDiameter.Value = spinnerScale.Value * mandelDisplay.Width; }
+        {
+            spinnerDiameter.Value = spinnerScale.Value * mandelDisplay.Width;
+            mandelDisplay.SetArea(areaFromSpinners());
+        }
 
         // ValueChanged handler for `spinnerDiameter`
         private void spinnerDiameter_ValueChanged(object sender, EventArgs e)
-        { spinnerScale.Value = spinnerDiameter.Value / mandelDisplay.Width; }
+        {
+            spinnerScale.Value = spinnerDiameter.Value / mandelDisplay.Width;
+            mandelDisplay.SetArea(areaFromSpinners());
+        }
 
         // ResizeEnd handler
         private void MainWindow_ResizeEnd(object sender, EventArgs e)
         {
-            // Check if the scale would change (if it wouldn't, there is no reason to recalculate the mandelbrot image)
-            if(spinnerScale.Value != spinnerDiameter.Value / mandelDisplay.Width)
-            {
-                // Keep the same diameter
-                spinnerScale.Value = spinnerDiameter.Value / mandelDisplay.Width;
-                recalcMandel();
-            }
+            // Recalculate the mandelbrot
+            recalcMandel();
         }
 
         // Resize handler
         private void MainWindow_Resize(object sender, EventArgs e)
         {
+            // Keep the same diameter
+            spinnerScale.Value = spinnerDiameter.Value / mandelDisplay.Width;
+
+            // Make sure that the right area is passed to the mandelDisplay
+            // Because if only the height is being adjusted, the value of spinnerScale doesn't change
+            mandelDisplay.SetArea(areaFromSpinners());
+
             // If our state changes, we need to recalculate (the ResizeEnd event will not fire then)
             if(lastRecalcState != WindowState && WindowState != FormWindowState.Minimized)
-            {
-                // Keep the same diameter
-                spinnerScale.Value = spinnerDiameter.Value / mandelDisplay.Width;
                 recalcMandel();
-            }
-        }
-
-        // MouseClick handler for `mandelDisplay`
-        private void mandelDisplay_MouseClick(object sender, MouseEventArgs mea)
-        {
-            // Set the new center
-            double scale = Decimal.ToDouble(spinnerScale.Value);
-            spinnerCenterX.Value = new Decimal(Decimal.ToDouble(spinnerCenterX.Value) - scale * mandelDisplay.Width / 2 + scale / 2 + mea.X * scale);
-            spinnerCenterY.Value = new Decimal(Decimal.ToDouble(spinnerCenterY.Value) + scale * mandelDisplay.Height / 2 - scale / 2 - mea.Y * scale);
-
-            // Zoom in
-            spinnerScale.Value = new Decimal(scale / 2);
-
-            // Recalculate the image
-            recalcMandel();
         }
 
         /// <summary>The last x-coordinate of the mouse if the mouse button is down, -1 otherwise</summary>
@@ -116,9 +119,6 @@ namespace complex_brood
                 // Translate the mandelbrot area
                 spinnerCenterX.Value -= (mea.X - lastDragX) * spinnerScale.Value;
                 spinnerCenterY.Value += (mea.Y - lastDragY) * spinnerScale.Value;
-
-                // Add a translation to the current mandelbrot image, for visual feedback
-                mandelDisplay.Translate(mea.X - lastDragX, mea.Y - lastDragY);
 
                 // Remember the current mouse position
                 lastDragX = mea.X;

@@ -78,19 +78,35 @@ namespace complex_brood
         public Rectangle CalcArea
         { get { return calcArea; } set { calcArea = value; } }
 
+        /// <summary>Calculates the x-coordinate of the left side of the entire area in mandelbrot coordinates</summary>
+        /// <returns>The x-coordinate of the left side of the entire area in mandelbrot coordinates</returns>
+        public double Left()
+        { return centerX - scale * pxWidth / 2 + scale / 2; }
+
+        /// <summary>Calculates the y-coordinate of the top of the entire area in mandelbrot coordinates</summary>
+        /// <returns>The y-coordinate of the top of the entire area in mandelbrot coordinates</returns>
+        public double Top()
+        { return centerY + scale * pxHeight / 2 - scale / 2; }
+
         /// <summary>Calculates the x-coordinate of the left side of the area that is to be calculated in mandelbrot coordinates</summary>
         /// <returns>The x-coordinate of the left side of the area that is to be calculated in mandelbrot coordinates</returns>
         public double CalcAreaLeft()
-        { return centerX - scale * pxWidth / 2 + scale / 2 + calcArea.X * scale; }
+        { return Left() + calcArea.X * scale; }
 
         /// <summary>Calculates the y-coordinate of the top of the area that is to be calculated in mandelbrot coordinates</summary>
         /// <returns>The y-coordinate of the top of the area that is to be calculated in mandelbrot coordinates</returns>
         public double CalcAreaTop()
-        { return centerY + scale * pxHeight / 2 - scale / 2 - calcArea.Y * scale; }
+        { return Top() - calcArea.Y * scale; }
 
         /// <summary>Calculates the y-coordinate of the bottom of the area that is to be calculated in mandelbrot coordinates</summary>
         /// <returns>The y-coordinate of the bottom of the area that is to be calculated in mandelbrot coordinates</returns>
         public double CalcAreaBottom()
         { return centerY - scale * pxHeight / 2 + scale / 2 + (pxHeight - calcArea.Bottom) * scale; }
+
+        /// <summary>Translate centerY so that the x-axis is precisely in the center of a row of pixels
+        /// This makes it possible to use the symmetry of the mandelbrot set to our advantage
+        /// And a translation of at most half a pixel won't be noticeable for the user in the output</summary>
+        public void CenterOnXAxis()
+        { centerY -= CalcAreaTop() - Math.Round(CalcAreaTop() / scale) * scale; }
     }
 }

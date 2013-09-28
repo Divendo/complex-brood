@@ -36,10 +36,8 @@ namespace complex_brood
                 // Abort any old workers
                 Abort();
 
-                // Translate centerY so that the x-axis is precisely in the center of a row of pixels
-                // This makes it possible to use the symmetry of the mandelbrot set to our advantage
-                // And a translation of at most half a pixel won't be noticeable for the user in the output
-                args.CenterY -= args.CalcAreaTop() - Math.Round(args.CalcAreaTop() / args.Scale) * args.Scale;
+                // Make sure the x axis lies in the middel of a pixel
+                args.CenterOnXAxis();
 
                 // Create a new worker
                 worker = new Worker(args);

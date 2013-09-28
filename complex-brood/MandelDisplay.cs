@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Data;
 using System.Linq;
 using System.Text;
@@ -37,12 +38,6 @@ namespace complex_brood
         /// <summary>The graphical representation of the current part of the mandelbrot</summary>
         private Bitmap img;
 
-        /// <summary>The horizontal translation of `img`</summary>
-        private int imgTransX;
-
-        /// <summary>The vertical translation of `img`</summary>
-        private int imgTransY;
-
         /// <summary>Whether we're currently calculating or not</summary>
         private bool calculating;
 
@@ -57,8 +52,6 @@ namespace complex_brood
             // Initialiaze some fields
             mandelNumbers = null;
             img = null;
-            imgTransX = 0;
-            imgTransY = 0;
             calculating = false;
             mandelNumberToColor = defaultMandelNumberToColor;
 
@@ -79,6 +72,8 @@ namespace complex_brood
         public void SetArea(MandelAreaArgs mea)
         {
             currArea = mea;
+            currArea.CenterOnXAxis();
+            Invalidate();
         }
 
         /// <summary>Recalculates the mandelbrot for the current size and area</summary>
@@ -92,17 +87,6 @@ namespace complex_brood
             Invalidate();
         }
 
-        /// <summary>Translates the current mandelbrot images by the given amount of pixels.
-        /// This translation is reset when the mandelbrot is recalculated.</summary>
-        /// <param name="dx">The amount of pixels to translate horizontally</param>
-        /// <param name="dy">The amount of pixels to translate vertically</param>
-        public void Translate(int dx, int dy)
-        {
-            imgTransX += dx;
-            imgTransY += dy;
-            Invalidate();
-        }
-
         public void SetMandelNumberToColorFunc(MandelNumberToColor f)
         { mandelNumberToColor = f; }
             
@@ -113,10 +97,6 @@ namespace complex_brood
             // Remember the area for which the calculation has been done
             calcedArea = args;
             mandelNumbers = result;
-
-            // Reset the translation for img
-            imgTransX = 0;
-            imgTransY = 0;
 
             // We're done calculating
             calculating = false;
@@ -164,17 +144,31 @@ namespace complex_brood
         // Handler for the Paint event
         private void paint(object sender, PaintEventArgs pea)
         {
-            // If there is no image, there is nothing to do
-            if(img == null) return;
-
             // Draw a white background
             pea.Graphics.FillRectangle(Brushes.White, 0, 0, Width, Height);
 
-            // Draw the image (scale it to fit)
-            double factor = Width / ((double) img.Width);
-            int w = (int) Math.Round(factor * img.Width);
-            int h = (int) Math.Round(factor * img.Height);
-            pea.Graphics.DrawImage(img, imgTransX + (Width - w) / 2, imgTransY + (Height - h) / 2, w, h);
+            // Draw the image, if we have one (scale it to fit)
+            if(img != null)
+            {
+               /* GraphicsState state = pea.Graphics.Save();
+                pea.Graphics.TranslateTransform((float) ((calcedArea.CenterX - currArea.CenterX) / calcedArea.Scale), (float) ((currArea.CenterY - calcedArea.CenterY) / calcedArea.Scale));
+                float scaleFactor = (float) (calcedArea.Scale / currArea.Scale);
+                pea.Graphics.ScaleTransform(scaleFactor, scaleFactor);
+
+                /*double factor = Width / ((double) img.Width);
+                int w = (int) Math.Round(factor * img.Width);
+                int h = (int) Math.Round(factor * img.Height);
+                pea.Graphics.DrawImage(img, (Width - w) / 2, (Height - h) / 2, w, h);*/
+                //pea.Graphics.DrawImage(img, 0, 0);
+                //pea.Graphics.DrawImage(img, new Rectangle(0, 0, Width, Height), new Rectangle(-50, -50, img.Width + 100, img.Height + 100), GraphicsUnit.Pixel);
+
+                //pea.Graphics.Restore(state);
+                RectangleF src = new RectangleF((float) ((currArea.Left() - calcedArea.Left()) / calcedArea.Scale),
+                                                (float) ((calcedArea.Top() - currArea.Top()) / calcedArea.Scale),
+                                                (float) (currArea.PxWidth * currArea.Scale / calcedArea.Scale),
+                                                (float) (currArea.PxHeight * currArea.Scale / calcedArea.Scale));
+                pea.Graphics.DrawImage(img, new RectangleF(0, 0, Width, Height), src, GraphicsUnit.Pixel);
+            }
 
             // Show whether we're still calculating or not
             if(calculating)

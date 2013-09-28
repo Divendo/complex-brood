@@ -55,6 +55,28 @@
             ((System.ComponentModel.ISupportInitialize)(this.spinnerCenterY)).BeginInit();
             this.SuspendLayout();
             // 
+            // labelColorPalette
+            // 
+            labelColorPalette.AutoSize = true;
+            labelColorPalette.Dock = System.Windows.Forms.DockStyle.Fill;
+            labelColorPalette.Location = new System.Drawing.Point(453, 32);
+            labelColorPalette.Name = "labelColorPalette";
+            labelColorPalette.Size = new System.Drawing.Size(114, 32);
+            labelColorPalette.TabIndex = 0;
+            labelColorPalette.Text = "Kleurschema:";
+            labelColorPalette.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+            // 
+            // labelLocations
+            // 
+            labelLocations.AutoSize = true;
+            labelLocations.Dock = System.Windows.Forms.DockStyle.Fill;
+            labelLocations.Location = new System.Drawing.Point(3, 64);
+            labelLocations.Name = "labelLocations";
+            labelLocations.Size = new System.Drawing.Size(109, 32);
+            labelLocations.TabIndex = 0;
+            labelLocations.Text = "Interessante locaties:";
+            labelLocations.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+            // 
             // labelCenterX
             // 
             this.labelCenterX.AutoSize = true;
@@ -162,6 +184,11 @@
             0,
             0,
             0});
+            this.spinnerScale.Minimum = new decimal(new int[] {
+            1,
+            0,
+            0,
+            589824});
             this.spinnerScale.Name = "spinnerScale";
             this.spinnerScale.Size = new System.Drawing.Size(89, 20);
             this.spinnerScale.TabIndex = 2;
@@ -241,6 +268,7 @@
             this.spinnerCenterX.Name = "spinnerCenterX";
             this.spinnerCenterX.Size = new System.Drawing.Size(89, 20);
             this.spinnerCenterX.TabIndex = 1;
+            this.spinnerCenterX.ValueChanged += new System.EventHandler(this.spinnerCenterX_ValueChanged);
             // 
             // spinnerCenterY
             // 
@@ -261,6 +289,7 @@
             this.spinnerCenterY.Name = "spinnerCenterY";
             this.spinnerCenterY.Size = new System.Drawing.Size(89, 20);
             this.spinnerCenterY.TabIndex = 4;
+            this.spinnerCenterY.ValueChanged += new System.EventHandler(this.spinnerCenterY_ValueChanged);
             // 
             // btnGo
             // 
@@ -273,17 +302,6 @@
             this.btnGo.Text = "Geef weer";
             this.btnGo.UseVisualStyleBackColor = true;
             this.btnGo.Click += new System.EventHandler(this.btnGo_Click);
-            // 
-            // labelColorPalette
-            // 
-            labelColorPalette.AutoSize = true;
-            labelColorPalette.Dock = System.Windows.Forms.DockStyle.Fill;
-            labelColorPalette.Location = new System.Drawing.Point(453, 32);
-            labelColorPalette.Name = "labelColorPalette";
-            labelColorPalette.Size = new System.Drawing.Size(114, 32);
-            labelColorPalette.TabIndex = 0;
-            labelColorPalette.Text = "Kleurschema:";
-            labelColorPalette.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
             // 
             // comboColorPalette
             // 
@@ -303,17 +321,6 @@
             this.comboColorPalette.Size = new System.Drawing.Size(94, 21);
             this.comboColorPalette.TabIndex = 6;
             this.comboColorPalette.SelectedIndexChanged += new System.EventHandler(this.comboColorPalette_SelectedIndexChanged);
-            // 
-            // labelLocations
-            // 
-            labelLocations.AutoSize = true;
-            labelLocations.Dock = System.Windows.Forms.DockStyle.Fill;
-            labelLocations.Location = new System.Drawing.Point(3, 64);
-            labelLocations.Name = "labelLocations";
-            labelLocations.Size = new System.Drawing.Size(109, 32);
-            labelLocations.TabIndex = 0;
-            labelLocations.Text = "Interessante locaties:";
-            labelLocations.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
             // 
             // comboLocations
             // 
@@ -357,7 +364,7 @@
             this.Controls.Add(this.tableLayout);
             this.MinimumSize = new System.Drawing.Size(686, 300);
             this.Name = "MainWindow";
-            this.Text = "Complex brood";
+            this.Text = "Complex brood - v1.0";
             this.ResizeEnd += new System.EventHandler(this.MainWindow_ResizeEnd);
             this.Resize += new System.EventHandler(this.MainWindow_Resize);
             this.tableLayout.ResumeLayout(false);
