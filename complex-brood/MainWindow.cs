@@ -62,6 +62,7 @@ namespace complex_brood
         // ValueChanged handler for `spinnerScale`
         private void spinnerScale_ValueChanged(object sender, EventArgs e)
         {
+            // No check on the validity of the value is needed, since `spinnerScale.Value * mandelDisplay.Width` is always a valid value for `spinnerDiameter`
             spinnerDiameter.Value = spinnerScale.Value * mandelDisplay.Width;
             mandelDisplay.SetArea(areaFromSpinners());
         }
@@ -69,7 +70,7 @@ namespace complex_brood
         // ValueChanged handler for `spinnerDiameter`
         private void spinnerDiameter_ValueChanged(object sender, EventArgs e)
         {
-            spinnerScale.Value = spinnerDiameter.Value / mandelDisplay.Width;
+            spinnerScale.Value = Math.Max(spinnerScale.Minimum, Math.Min(spinnerScale.Maximum, spinnerDiameter.Value / mandelDisplay.Width));
             mandelDisplay.SetArea(areaFromSpinners());
         }
 
@@ -84,7 +85,7 @@ namespace complex_brood
         private void MainWindow_Resize(object sender, EventArgs e)
         {
             // Keep the same diameter
-            spinnerScale.Value = spinnerDiameter.Value / mandelDisplay.Width;
+            spinnerScale.Value = Math.Max(spinnerScale.Minimum, Math.Min(spinnerScale.Maximum, spinnerDiameter.Value / mandelDisplay.Width));
 
             // Make sure that the right area is passed to the mandelDisplay
             // Because if only the height is being adjusted, the value of spinnerScale doesn't change
@@ -117,8 +118,8 @@ namespace complex_brood
             if(lastDragX > 0 && lastDragY > 0)
             {
                 // Translate the mandelbrot area
-                spinnerCenterX.Value -= (mea.X - lastDragX) * spinnerScale.Value;
-                spinnerCenterY.Value += (mea.Y - lastDragY) * spinnerScale.Value;
+                spinnerCenterX.Value = Math.Max(spinnerCenterX.Minimum, Math.Min(spinnerCenterX.Maximum, spinnerCenterX.Value - (mea.X - lastDragX) * spinnerScale.Value));
+                spinnerCenterY.Value = Math.Max(spinnerCenterY.Minimum, Math.Min(spinnerCenterY.Maximum, spinnerCenterY.Value + (mea.Y - lastDragY) * spinnerScale.Value));
 
                 // Remember the current mouse position
                 lastDragX = mea.X;
@@ -139,11 +140,11 @@ namespace complex_brood
             {
                 // Set the new center
                 double scale = Decimal.ToDouble(spinnerScale.Value);
-                spinnerCenterX.Value = new Decimal(Decimal.ToDouble(spinnerCenterX.Value) - scale * mandelDisplay.Width / 2 + scale / 2 + mea.X * scale);
-                spinnerCenterY.Value = new Decimal(Decimal.ToDouble(spinnerCenterY.Value) + scale * mandelDisplay.Height / 2 - scale / 2 - mea.Y * scale);
+                spinnerCenterX.Value = Math.Max(spinnerCenterX.Minimum, Math.Min(spinnerCenterX.Maximum, new Decimal(Decimal.ToDouble(spinnerCenterX.Value) - scale * mandelDisplay.Width / 2 + scale / 2 + mea.X * scale)));
+                spinnerCenterY.Value = Math.Max(spinnerCenterY.Minimum, Math.Min(spinnerCenterY.Maximum, new Decimal(Decimal.ToDouble(spinnerCenterY.Value) + scale * mandelDisplay.Height / 2 - scale / 2 - mea.Y * scale)));
 
                 // Zoom in
-                spinnerScale.Value = new Decimal(scale / 2);
+                spinnerScale.Value = Math.Max(spinnerScale.Minimum, Math.Min(spinnerScale.Maximum, new Decimal(scale / 2)));
             }
 
             // Recalculate the image
@@ -204,6 +205,7 @@ namespace complex_brood
                 new double[] {-0.732532474, 0.216417977,    0.003984000} };
 
             // Set the new values to the spinners
+            // No checks on the validity of the values is needed, since all values are garuanteed to be valid
             spinnerCenterX.Value = new Decimal(locationData[comboLocations.SelectedIndex][0]);
             spinnerCenterY.Value = new Decimal(locationData[comboLocations.SelectedIndex][1]);
             spinnerDiameter.Value = new Decimal(locationData[comboLocations.SelectedIndex][2]);
