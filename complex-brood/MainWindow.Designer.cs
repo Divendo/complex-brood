@@ -36,6 +36,7 @@
             this.labelMaxIterations = new System.Windows.Forms.Label();
             this.labelViewWidth = new System.Windows.Forms.Label();
             this.tableLayout = new System.Windows.Forms.TableLayoutPanel();
+            this.mandelDisplay = new complex_brood.MandelDisplay();
             this.spinnerScale = new System.Windows.Forms.NumericUpDown();
             this.spinnerMaxIterations = new System.Windows.Forms.NumericUpDown();
             this.spinnerDiameter = new System.Windows.Forms.NumericUpDown();
@@ -44,7 +45,6 @@
             this.btnGo = new System.Windows.Forms.Button();
             this.comboColorPalette = new System.Windows.Forms.ComboBox();
             this.comboLocations = new System.Windows.Forms.ComboBox();
-            this.mandelDisplay = new complex_brood.MandelDisplay();
             labelColorPalette = new System.Windows.Forms.Label();
             labelLocations = new System.Windows.Forms.Label();
             this.tableLayout.SuspendLayout();
@@ -167,6 +167,20 @@
             this.tableLayout.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.tableLayout.Size = new System.Drawing.Size(670, 470);
             this.tableLayout.TabIndex = 0;
+            // 
+            // mandelDisplay
+            // 
+            this.tableLayout.SetColumnSpan(this.mandelDisplay, 6);
+            this.mandelDisplay.Cursor = System.Windows.Forms.Cursors.Cross;
+            this.mandelDisplay.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.mandelDisplay.Location = new System.Drawing.Point(3, 99);
+            this.mandelDisplay.Name = "mandelDisplay";
+            this.mandelDisplay.Size = new System.Drawing.Size(664, 368);
+            this.mandelDisplay.TabIndex = 0;
+            this.mandelDisplay.MouseDown += new System.Windows.Forms.MouseEventHandler(this.mandelDisplay_MouseDown);
+            this.mandelDisplay.MouseLeave += new System.EventHandler(this.mandelDisplay_MouseLeave);
+            this.mandelDisplay.MouseMove += new System.Windows.Forms.MouseEventHandler(this.mandelDisplay_MouseMove);
+            this.mandelDisplay.MouseUp += new System.Windows.Forms.MouseEventHandler(this.mandelDisplay_MouseUp);
             // 
             // spinnerScale
             // 
@@ -341,20 +355,6 @@
             this.comboLocations.Size = new System.Drawing.Size(234, 21);
             this.comboLocations.TabIndex = 7;
             this.comboLocations.SelectedIndexChanged += new System.EventHandler(this.comboLocations_SelectedIndexChanged);
-            // 
-            // mandelDisplay
-            // 
-            this.tableLayout.SetColumnSpan(this.mandelDisplay, 6);
-            this.mandelDisplay.Cursor = System.Windows.Forms.Cursors.Cross;
-            this.mandelDisplay.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.mandelDisplay.Location = new System.Drawing.Point(3, 99);
-            this.mandelDisplay.Name = "mandelDisplay";
-            this.mandelDisplay.Size = new System.Drawing.Size(664, 368);
-            this.mandelDisplay.TabIndex = 0;
-            this.mandelDisplay.MouseDown += new System.Windows.Forms.MouseEventHandler(this.mandelDisplay_MouseDown);
-            this.mandelDisplay.MouseLeave += new System.EventHandler(this.mandelDisplay_MouseLeave);
-            this.mandelDisplay.MouseMove += new System.Windows.Forms.MouseEventHandler(this.mandelDisplay_MouseMove);
-            this.mandelDisplay.MouseUp += new System.Windows.Forms.MouseEventHandler(this.mandelDisplay_MouseUp);
             // 
             // MainWindow
             // 
